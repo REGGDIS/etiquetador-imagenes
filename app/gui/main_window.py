@@ -5,7 +5,7 @@ from tkinter import filedialog, messagebox
 from PIL import ImageTk
 
 from app.services.image_service import buscar_imagenes, cargar_imagen
-from app.services.metadata_service import leer_etiquetas, escribir_etiquetas
+from app.services.metadata_service import MetadataError, leer_etiquetas, escribir_etiquetas
 
 
 class EtiquetadorApp:
@@ -74,8 +74,8 @@ class EtiquetadorApp:
             etiquetas = leer_etiquetas(ruta_imagen)
             self.etiquetas_entry.delete(0, tk.END)
             self.etiquetas_entry.insert(0, ", ".join(etiquetas))
-        except Exception as e:
-            print(f"No se pudieron leer las etiquetas con exiftool: {e}")
+        except MetadataError as e:
+            messagebox.showerror("Error de ExifTool", str(e))
             self.etiquetas_entry.delete(0, tk.END)
 
         self.root.title(
@@ -93,10 +93,9 @@ class EtiquetadorApp:
             escribir_etiquetas(ruta_imagen, etiquetas)
             messagebox.showinfo(
                 "Guardado", "Etiquetas escritas en los metadatos del archivo.")
-        except Exception as e:
-            print(f"Error al guardar etiquetas con exiftool: {e}")
+        except MetadataError as e:
             messagebox.showerror(
-                "Error", f"No se pudo guardar con exiftool.\n{e}")
+                "Error de ExifTool", str(e))
 
     def imagen_siguiente(self):
         if self.indice_actual < len(self.lista_imagenes) - 1:

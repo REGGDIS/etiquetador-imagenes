@@ -1,6 +1,7 @@
 import os
 
 from PIL import Image
+from PIL import UnidentifiedImageError
 
 from app.core.config import IMAGE_PREVIEW_SIZE, SUPPORTED_IMAGE_EXTENSIONS
 
@@ -16,6 +17,9 @@ def buscar_imagenes(carpeta):
 
 
 def cargar_imagen(ruta_imagen):
-    imagen = Image.open(ruta_imagen)
-    imagen.thumbnail(IMAGE_PREVIEW_SIZE)
-    return imagen
+    try:
+        with Image.open(ruta_imagen) as imagen:
+            imagen.thumbnail(IMAGE_PREVIEW_SIZE)
+            return imagen.copy()
+    except (OSError, UnidentifiedImageError, ValueError) as error:
+        raise RuntimeError(f"No se pudo abrir la imagen.\n{error}") from error

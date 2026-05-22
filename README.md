@@ -31,6 +31,8 @@ El objetivo principal es facilitar que las imágenes puedan encontrarse posterio
 - Python instalado.
 - ExifTool disponible en la raíz del proyecto como `exiftool.exe`.
 
+Para configurar ExifTool en Windows, revisa `docs/instalacion-exiftool-windows.md`.
+
 `exiftool.exe` y la carpeta `exiftool_files/` son archivos locales ignorados por Git mediante `.gitignore`, por lo que no se suben al repositorio.
 
 ## Instalación

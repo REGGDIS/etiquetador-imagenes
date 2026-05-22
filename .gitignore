@@ -13,3 +13,7 @@ Thumbs.db
 
 # Archivos específicos
 etiquetas.json
+
+# ExifTool
+exiftool.exe
+exiftool_files/

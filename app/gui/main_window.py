@@ -6,6 +6,7 @@ from PIL import ImageTk
 
 from app.services.image_service import buscar_imagenes, cargar_imagen
 from app.services.metadata_service import MetadataError, leer_etiquetas, escribir_etiquetas
+from app.services.tag_service import normalizar_etiquetas_desde_texto
 
 
 class EtiquetadorApp:
@@ -149,11 +150,12 @@ class EtiquetadorApp:
             return
 
         ruta_imagen = os.path.abspath(self.lista_imagenes[self.indice_actual])
-        etiquetas = [e.strip()
-                     for e in self.etiquetas_entry.get().split(",") if e.strip()]
+        etiquetas = normalizar_etiquetas_desde_texto(self.etiquetas_entry.get())
 
         try:
             escribir_etiquetas(ruta_imagen, etiquetas)
+            self.etiquetas_entry.delete(0, tk.END)
+            self.etiquetas_entry.insert(0, ", ".join(etiquetas))
             self.estado_var.set("Etiquetas guardadas correctamente.")
             messagebox.showinfo(
                 "Guardado", "Etiquetas escritas en los metadatos del archivo.")

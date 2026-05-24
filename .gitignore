@@ -17,3 +17,5 @@ etiquetas.json
 # ExifTool
 exiftool.exe
 exiftool_files/
+# Logs locales de OpenCode/Codex
+opencode-logs/

@@ -1,5 +1,3 @@
-import customtkinter as ctk
-
 from app.gui.customtk_window import EtiquetadorCustomTkApp
 
 

@@ -15,7 +15,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
-        self.title("Etiquetador de Imágenes - CustomTkinter POC")
+        self.title("Etiquetador de Imágenes")
         self.geometry("1180x760")
         self.minsize(980, 660)
 
@@ -71,7 +71,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
 
         subtitulo = ctk.CTkLabel(
             encabezado_frame,
-            text="Prueba de concepto visual con CustomTkinter",
+            text="Organiza y etiqueta imágenes usando metadatos reales",
             text_color=("gray35", "gray72"),
             anchor="w",
             wraplength=290,
@@ -301,7 +301,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.imagen_ctk = None
         self._crear_imagen_label("Abra una carpeta para visualizar imágenes")
         self.etiquetas_entry.delete(0, "end")
-        self.title("Etiquetador de Imágenes - CustomTkinter POC")
+        self.title("Etiquetador de Imágenes")
 
     def calcular_tamano_imagen(self, imagen):
         max_width, max_height = self.obtener_area_imagen_disponible()

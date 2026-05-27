@@ -1,6 +1,6 @@
 import tkinter as tk
 
-from app.gui.main_window import EtiquetadorApp
+from app.gui.legacy.tkinter_window import EtiquetadorApp
 
 
 if __name__ == "__main__":

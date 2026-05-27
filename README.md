@@ -4,7 +4,7 @@ Aplicación de escritorio para Windows desarrollada en Python. Permite visualiza
 
 El objetivo principal es facilitar que las imágenes puedan encontrarse posteriormente desde el Explorador de Windows mediante búsquedas por etiquetas.
 
-La interfaz principal actual usa CustomTkinter. La antigua interfaz Tkinter se conserva temporalmente como respaldo legacy.
+La interfaz principal actual usa CustomTkinter. La antigua interfaz Tkinter queda archivada como respaldo legacy temporal.
 
 ## Funcionalidades Actuales
 
@@ -26,7 +26,7 @@ La interfaz principal actual usa CustomTkinter. La antigua interfaz Tkinter se c
 
 - Python 3.12
 - CustomTkinter
-- Tkinter como respaldo legacy temporal
+- Tkinter archivado como respaldo legacy temporal
 - Pillow
 - ExifTool
 - Git/GitHub
@@ -75,7 +75,7 @@ También puede ejecutarse directamente desde el entorno virtual:
 
 ### Interfaz Tkinter Legacy
 
-La GUI Tkinter antigua se conserva temporalmente como respaldo:
+La GUI Tkinter antigua no es la interfaz principal. Se conserva archivada en `app/gui/legacy/tkinter_window.py` como respaldo temporal y puede ejecutarse con:
 
 ```powershell
 python main_tkinter_legacy.py
@@ -130,8 +130,10 @@ app/
 │   └── config.py
 ├── gui/
 │   ├── __init__.py
-│   ├── customtk_window.py
-│   └── main_window.py        # GUI Tkinter legacy
+│   ├── customtk_window.py    # GUI principal CustomTkinter
+│   └── legacy/
+│       ├── __init__.py
+│       └── tkinter_window.py # GUI Tkinter legacy archivada
 └── services/
     ├── __init__.py
     ├── image_service.py
@@ -151,8 +153,8 @@ venv/                 # local, ignorado por Git
 - `main.py` es el punto de entrada principal y abre la interfaz CustomTkinter.
 - `app/gui/customtk_window.py` contiene la interfaz principal actual.
 - `main_customtk.py` queda como alias temporal de la interfaz CustomTkinter.
-- `main_tkinter_legacy.py` permite ejecutar temporalmente la GUI Tkinter antigua.
-- `app/gui/main_window.py` contiene la interfaz Tkinter legacy.
+- `main_tkinter_legacy.py` permite ejecutar temporalmente la GUI Tkinter antigua archivada.
+- `app/gui/legacy/tkinter_window.py` contiene la interfaz Tkinter legacy archivada.
 - `app/services/image_service.py` contiene búsqueda y carga de imágenes.
 - `app/services/metadata_service.py` contiene lectura y escritura de metadatos con ExifTool.
 - `app/services/tag_service.py` contiene normalización de etiquetas.

@@ -1,8 +1,11 @@
 import os
+import tkinter as tk
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
+from PIL import Image, ImageTk
 
+from app.core.config import CUSTOMTK_IMAGE_PREVIEW_SIZE
 from app.services.image_service import buscar_imagenes, cargar_imagen
 from app.services.metadata_service import MetadataError, leer_etiquetas, escribir_etiquetas
 from app.services.tag_service import normalizar_etiquetas_desde_texto, normalizar_texto_etiqueta
@@ -26,7 +29,10 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.indice_actual = 0
         self.carpeta = ""
         self.imagen_min_size = (620, 520)
-        self.imagen_ctk = None
+        self.imagen_tk = None
+        self.canvas_image_id = None
+        self.canvas_text_id = None
+        self.texto_placeholder_imagen = "Abra una carpeta para visualizar imágenes"
         self.redimensionar_imagen_id = None
 
         self.nombre_imagen_var = ctk.StringVar(value="Sin imagen cargada")
@@ -48,8 +54,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.imagen_frame.grid_rowconfigure(0, weight=1)
         self.imagen_frame.bind("<Configure>", self._programar_redimension_imagen)
 
-        self.imagen_label = None
-        self._crear_imagen_label("Abra una carpeta para visualizar imágenes")
+        self._crear_imagen_canvas()
 
         controles_frame = ctk.CTkFrame(self, corner_radius=14, width=330)
         controles_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 18), pady=18)
@@ -219,21 +224,20 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         )
         self.estado_label.grid(row=7, column=0, sticky="ew", padx=16, pady=(0, 16))
 
-    def _crear_imagen_label(self, texto):
-        if self.imagen_label is not None:
-            self.imagen_label.destroy()
-
-        self.imagen_label = ctk.CTkLabel(
+    def _crear_imagen_canvas(self):
+        self.imagen_canvas = tk.Canvas(
             self.imagen_frame,
-            text=texto,
-            fg_color=("gray88", "gray16"),
-            corner_radius=12,
-            anchor="center",
+            bg="#242424",
+            highlightthickness=0,
+            bd=0,
         )
-        self.imagen_label.grid(row=0, column=0, sticky="nsew", padx=14, pady=14)
+        self.imagen_canvas.grid(row=0, column=0, sticky="nsew", padx=14, pady=14)
+        self.imagen_canvas.bind("<Configure>", self._programar_redimension_imagen)
+        self.mostrar_placeholder_imagen(self.texto_placeholder_imagen)
 
     def _programar_redimension_imagen(self, _event=None):
         if not self.obtener_lista_actual():
+            self.mostrar_placeholder_imagen(self.texto_placeholder_imagen)
             return
 
         if self.redimensionar_imagen_id is not None:
@@ -248,15 +252,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             return
 
         try:
-            ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
-            imagen = cargar_imagen(ruta_imagen)
-            ancho, alto = self.calcular_tamano_imagen(imagen)
-            self.imagen_ctk = ctk.CTkImage(
-                light_image=imagen,
-                dark_image=imagen,
-                size=(ancho, alto),
-            )
-            self.imagen_label.configure(image=self.imagen_ctk, text="")
+            self.renderizar_imagen_actual()
         except Exception:
             self.limpiar_vista_imagen()
             self.estado_var.set("No se pudo ajustar la imagen actual.")
@@ -298,28 +294,78 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.busqueda_entry.delete(0, "end")
 
     def limpiar_vista_imagen(self):
-        self.imagen_ctk = None
-        self._crear_imagen_label("Abra una carpeta para visualizar imágenes")
+        self.mostrar_placeholder_imagen("Abra una carpeta para visualizar imágenes")
         self.etiquetas_entry.delete(0, "end")
         self.title("Etiquetador de Imágenes")
 
-    def calcular_tamano_imagen(self, imagen):
+    def mostrar_placeholder_imagen(self, texto):
+        self.texto_placeholder_imagen = texto
+        self.imagen_tk = None
+        self.canvas_image_id = None
+        self.imagen_canvas.delete("all")
+
+        ancho, alto = self.obtener_area_imagen_disponible()
+        self.canvas_text_id = self.imagen_canvas.create_text(
+            ancho // 2,
+            alto // 2,
+            text=texto,
+            fill="#d0d0d0",
+            font=("Segoe UI", 16),
+            anchor="center",
+        )
+
+    def ajustar_imagen_a_panel(self, imagen):
         max_width, max_height = self.obtener_area_imagen_disponible()
         ancho, alto = imagen.size
+
+        if ancho <= 0 or alto <= 0:
+            return imagen
+
         escala = min(max_width / ancho, max_height / alto, 1)
 
-        return max(1, int(ancho * escala)), max(1, int(alto * escala))
+        nuevo_ancho = min(max_width, max(1, int(ancho * escala)))
+        nuevo_alto = min(max_height, max(1, int(alto * escala)))
+
+        if (nuevo_ancho, nuevo_alto) == imagen.size:
+            return imagen
+
+        return imagen.resize((nuevo_ancho, nuevo_alto), Image.Resampling.LANCZOS)
+
+    def renderizar_imagen_actual(self):
+        lista_actual = self.obtener_lista_actual()
+        if not lista_actual:
+            self.mostrar_placeholder_imagen("Abra una carpeta para visualizar imágenes")
+            return
+
+        ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
+        imagen = cargar_imagen(ruta_imagen, CUSTOMTK_IMAGE_PREVIEW_SIZE)
+        imagen = self.ajustar_imagen_a_panel(imagen)
+        self.imagen_tk = ImageTk.PhotoImage(imagen)
+
+        canvas_width, canvas_height = self.obtener_area_imagen_disponible()
+        self.imagen_canvas.delete("all")
+        self.canvas_text_id = None
+        self.canvas_image_id = self.imagen_canvas.create_image(
+            canvas_width // 2,
+            canvas_height // 2,
+            image=self.imagen_tk,
+            anchor="center",
+        )
 
     def obtener_area_imagen_disponible(self):
         self.update_idletasks()
 
-        max_width = self.imagen_frame.winfo_width() - 52
-        max_height = self.imagen_frame.winfo_height() - 52
+        max_width = self.imagen_canvas.winfo_width()
+        max_height = self.imagen_canvas.winfo_height()
+
+        if max_width <= 1 or max_height <= 1:
+            max_width = self.imagen_frame.winfo_width() - 28
+            max_height = self.imagen_frame.winfo_height() - 28
 
         if max_width <= 1 or max_height <= 1:
             return self.imagen_min_size
 
-        return max_width, max_height
+        return max(1, int(max_width)), max(1, int(max_height))
 
     def buscar_por_etiqueta(self):
         if not self.lista_imagenes:
@@ -356,7 +402,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             mensaje = f"Búsqueda activa: {len(resultados)} resultado(s) para \"{texto_busqueda}\"."
         else:
             self.limpiar_vista_imagen()
-            self.imagen_label.configure(text="Sin resultados para la etiqueta buscada")
+            self.mostrar_placeholder_imagen("Sin resultados para la etiqueta buscada")
             self.actualizar_informacion()
             self.actualizar_estado_botones()
             mensaje = f"Sin resultados para \"{texto_busqueda}\"."
@@ -393,14 +439,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.actualizar_estado_botones()
 
         try:
-            imagen = cargar_imagen(ruta_imagen)
-            ancho, alto = self.calcular_tamano_imagen(imagen)
-            self.imagen_ctk = ctk.CTkImage(
-                light_image=imagen,
-                dark_image=imagen,
-                size=(ancho, alto),
-            )
-            self.imagen_label.configure(image=self.imagen_ctk, text="")
+            self.renderizar_imagen_actual()
         except Exception as error:
             self.etiquetas_entry.delete(0, "end")
             self.estado_var.set("No se pudo cargar la imagen actual.")

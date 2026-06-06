@@ -161,12 +161,22 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         etiquetas_label = ctk.CTkLabel(etiquetas_frame, text="Etiquetas")
         etiquetas_label.grid(row=0, column=0, sticky="w", pady=(0, 4))
 
-        self.etiquetas_entry = ctk.CTkEntry(
+        etiquetas_ayuda = ctk.CTkLabel(
             etiquetas_frame,
-            placeholder_text="Separar etiquetas con coma",
-            height=38,
+            text="Separar etiquetas con coma",
+            text_color=("gray38", "gray70"),
+            anchor="w",
         )
-        self.etiquetas_entry.grid(row=1, column=0, sticky="ew")
+        etiquetas_ayuda.grid(row=1, column=0, sticky="ew", pady=(0, 4))
+
+        self.etiquetas_entry = ctk.CTkTextbox(
+            etiquetas_frame,
+            height=82,
+            border_width=1,
+            border_color=("gray68", "gray34"),
+            wrap="word",
+        )
+        self.etiquetas_entry.grid(row=2, column=0, sticky="ew")
 
         self.boton_guardar = ctk.CTkButton(
             etiquetas_frame,
@@ -174,8 +184,11 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             command=self.guardar_etiquetas,
             width=0,
             height=38,
+            fg_color="#d97706",
+            hover_color="#b45309",
+            text_color="#ffffff",
         )
-        self.boton_guardar.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        self.boton_guardar.grid(row=3, column=0, sticky="ew", pady=(8, 0))
 
         navegacion_frame = ctk.CTkFrame(controles_frame, fg_color="transparent")
         navegacion_frame.grid(row=4, column=0, sticky="ew", padx=16, pady=(0, 10))
@@ -295,8 +308,18 @@ class EtiquetadorCustomTkApp(ctk.CTk):
 
     def limpiar_vista_imagen(self):
         self.mostrar_placeholder_imagen("Abra una carpeta para visualizar imágenes")
-        self.etiquetas_entry.delete(0, "end")
+        self.limpiar_campo_etiquetas()
         self.title("Etiquetador de Imágenes")
+
+    def obtener_texto_etiquetas(self):
+        return self.etiquetas_entry.get("1.0", "end").strip()
+
+    def limpiar_campo_etiquetas(self):
+        self.etiquetas_entry.delete("1.0", "end")
+
+    def escribir_texto_etiquetas(self, texto):
+        self.limpiar_campo_etiquetas()
+        self.etiquetas_entry.insert("1.0", texto)
 
     def mostrar_placeholder_imagen(self, texto):
         self.texto_placeholder_imagen = texto
@@ -441,7 +464,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         try:
             self.renderizar_imagen_actual()
         except Exception as error:
-            self.etiquetas_entry.delete(0, "end")
+            self.limpiar_campo_etiquetas()
             self.estado_var.set("No se pudo cargar la imagen actual.")
             messagebox.showerror(
                 "Error al mostrar imagen",
@@ -451,11 +474,10 @@ class EtiquetadorCustomTkApp(ctk.CTk):
 
         try:
             etiquetas = leer_etiquetas(ruta_imagen)
-            self.etiquetas_entry.delete(0, "end")
-            self.etiquetas_entry.insert(0, ", ".join(etiquetas))
+            self.escribir_texto_etiquetas(", ".join(etiquetas))
         except MetadataError as error:
             messagebox.showerror("Error de ExifTool", str(error))
-            self.etiquetas_entry.delete(0, "end")
+            self.limpiar_campo_etiquetas()
             self.estado_var.set("No se pudieron leer las etiquetas.")
 
         self.title(f"{nombre_archivo} - {self.indice_actual + 1}/{len(lista_actual)}")
@@ -466,12 +488,11 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             return
 
         ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
-        etiquetas = normalizar_etiquetas_desde_texto(self.etiquetas_entry.get())
+        etiquetas = normalizar_etiquetas_desde_texto(self.obtener_texto_etiquetas())
 
         try:
             escribir_etiquetas(ruta_imagen, etiquetas)
-            self.etiquetas_entry.delete(0, "end")
-            self.etiquetas_entry.insert(0, ", ".join(etiquetas))
+            self.escribir_texto_etiquetas(", ".join(etiquetas))
             if self.busqueda_activa:
                 self.estado_var.set(
                     "Etiquetas guardadas. Repite la búsqueda si quieres actualizar los resultados."
@@ -512,21 +533,36 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         else:
             self.carpeta_var.set("Carpeta: ninguna")
 
+    def configurar_boton_navegacion(self, boton, habilitado):
+        if habilitado:
+            boton.configure(
+                state="normal",
+                fg_color=("#3b8ed0", "#1f6aa5"),
+                hover_color=("#36719f", "#144870"),
+                text_color=("#ffffff", "#ffffff"),
+            )
+            return
+
+        boton.configure(
+            state="disabled",
+            fg_color=("gray74", "gray24"),
+            hover_color=("gray74", "gray24"),
+            text_color_disabled=("gray50", "gray58"),
+        )
+
     def actualizar_estado_botones(self):
         lista_actual = self.obtener_lista_actual()
         hay_imagenes_visibles = bool(lista_actual)
         hay_imagenes_cargadas = bool(self.lista_imagenes)
 
         self.boton_guardar.configure(state="normal" if hay_imagenes_visibles else "disabled")
-        self.boton_anterior.configure(
-            state="normal"
-            if hay_imagenes_visibles and self.indice_actual > 0
-            else "disabled"
+        self.configurar_boton_navegacion(
+            self.boton_anterior,
+            hay_imagenes_visibles and self.indice_actual > 0,
         )
-        self.boton_siguiente.configure(
-            state="normal"
-            if hay_imagenes_visibles and self.indice_actual < len(lista_actual) - 1
-            else "disabled"
+        self.configurar_boton_navegacion(
+            self.boton_siguiente,
+            hay_imagenes_visibles and self.indice_actual < len(lista_actual) - 1,
         )
         self.boton_buscar.configure(state="normal" if hay_imagenes_cargadas else "disabled")
         self.boton_limpiar_busqueda.configure(state="normal" if self.busqueda_activa else "disabled")

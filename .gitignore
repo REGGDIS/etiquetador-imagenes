@@ -22,3 +22,8 @@ opencode-logs/
 
 # Reportes temporales de revisión de etiquetas con ExifTool
 revision_etiquetas_*.csv
+
+# Archivos de empaquetado local
+build/
+dist/
+*.spec

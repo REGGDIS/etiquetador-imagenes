@@ -491,12 +491,41 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         etiquetas = normalizar_etiquetas_desde_texto(self.obtener_texto_etiquetas())
 
         try:
-            escribir_etiquetas(ruta_imagen, etiquetas)
+            etiquetas_existentes = leer_etiquetas(ruta_imagen)
+        except MetadataError as error:
+            self.estado_var.set("No se guardó. No se pudieron verificar las etiquetas existentes.")
+            messagebox.showerror("Error de ExifTool", str(error))
+            return
+
+        eliminando_etiquetas = not etiquetas and bool(etiquetas_existentes)
+        if eliminando_etiquetas:
+            confirmar_borrado = messagebox.askyesno(
+                "Confirmar borrado de etiquetas",
+                (
+                    "El campo de etiquetas está vacío.\n"
+                    "Guardar ahora eliminará las etiquetas existentes de esta imagen.\n"
+                    "¿Deseas continuar?"
+                ),
+            )
+            if not confirmar_borrado:
+                self.estado_var.set("Guardado cancelado. Las etiquetas existentes se conservaron.")
+                return
+
+        if not etiquetas and not etiquetas_existentes:
+            self.estado_var.set("No hay etiquetas para guardar.")
+            return
+
+        etiquetas_para_escribir = [""] if eliminando_etiquetas else etiquetas
+
+        try:
+            escribir_etiquetas(ruta_imagen, etiquetas_para_escribir)
             self.escribir_texto_etiquetas(", ".join(etiquetas))
             if self.busqueda_activa:
                 self.estado_var.set(
                     "Etiquetas guardadas. Repite la búsqueda si quieres actualizar los resultados."
                 )
+            elif eliminando_etiquetas:
+                self.estado_var.set("Etiquetas eliminadas correctamente.")
             else:
                 self.estado_var.set("Etiquetas guardadas correctamente.")
             messagebox.showinfo(

@@ -1,14 +1,20 @@
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from time import perf_counter
 
 import customtkinter as ctk
 from PIL import Image, ImageTk
 
-from app.core.config import CUSTOMTK_IMAGE_PREVIEW_SIZE
+from app.core.config import CUSTOMTK_IMAGE_PREVIEW_SIZE, DEBUG_RENDIMIENTO
 from app.services.image_service import buscar_imagenes, cargar_imagen
 from app.services.metadata_service import MetadataError, leer_etiquetas, escribir_etiquetas
 from app.services.tag_service import normalizar_etiquetas_desde_texto, normalizar_texto_etiqueta
+
+
+def _medir_tiempo(nombre, inicio):
+    if DEBUG_RENDIMIENTO:
+        print(f"[PERF] {nombre}: {perf_counter() - inicio:.3f}s")
 
 
 class EtiquetadorCustomTkApp(ctk.CTk):
@@ -259,9 +265,11 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         self.redimensionar_imagen_id = self.after(140, self._redimensionar_imagen_actual)
 
     def _redimensionar_imagen_actual(self):
+        inicio = perf_counter()
         self.redimensionar_imagen_id = None
         lista_actual = self.obtener_lista_actual()
         if not lista_actual:
+            _medir_tiempo("redimensionar_imagen", inicio)
             return
 
         try:
@@ -269,14 +277,19 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         except Exception:
             self.limpiar_vista_imagen()
             self.estado_var.set("No se pudo ajustar la imagen actual.")
+        finally:
+            _medir_tiempo("redimensionar_imagen", inicio)
 
     def abrir_carpeta(self):
         carpeta = filedialog.askdirectory()
         if not carpeta:
             return
 
+        inicio = perf_counter()
         self.carpeta = carpeta
         self.lista_imagenes = buscar_imagenes(self.carpeta)
+        if DEBUG_RENDIMIENTO:
+            print(f"[PERF] abrir_carpeta - imagenes encontradas: {len(self.lista_imagenes)}")
         self.limpiar_estado_busqueda()
 
         if not self.lista_imagenes:
@@ -289,11 +302,13 @@ class EtiquetadorCustomTkApp(ctk.CTk):
                 "Sin imágenes",
                 "No se encontraron imágenes válidas en la carpeta seleccionada.",
             )
+            _medir_tiempo("abrir_carpeta", inicio)
             return
 
         self.indice_actual = 0
         self.estado_var.set("Carpeta cargada correctamente.")
         self.mostrar_imagen()
+        _medir_tiempo("abrir_carpeta", inicio)
 
     def obtener_lista_actual(self):
         if self.busqueda_activa:
@@ -355,9 +370,11 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         return imagen.resize((nuevo_ancho, nuevo_alto), Image.Resampling.LANCZOS)
 
     def renderizar_imagen_actual(self):
+        inicio = perf_counter()
         lista_actual = self.obtener_lista_actual()
         if not lista_actual:
             self.mostrar_placeholder_imagen("Abra una carpeta para visualizar imágenes")
+            _medir_tiempo("renderizar_imagen_actual", inicio)
             return
 
         ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
@@ -374,6 +391,7 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             image=self.imagen_tk,
             anchor="center",
         )
+        _medir_tiempo("renderizar_imagen_actual", inicio)
 
     def obtener_area_imagen_disponible(self):
         self.update_idletasks()
@@ -394,15 +412,19 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         if not self.lista_imagenes:
             return
 
+        inicio = perf_counter()
         texto_busqueda = normalizar_texto_etiqueta(self.busqueda_entry.get())
         if not texto_busqueda:
             self.estado_var.set("Ingrese una etiqueta para buscar.")
+            _medir_tiempo("buscar_por_etiqueta", inicio)
             return
 
         resultados = []
         errores = 0
+        imagenes_revisadas = 0
 
         for ruta_imagen in self.lista_imagenes:
+            imagenes_revisadas += 1
             try:
                 etiquetas = leer_etiquetas(os.path.abspath(ruta_imagen))
             except MetadataError:
@@ -434,8 +456,13 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             mensaje += f" {errores} imagen(es) no pudieron leerse."
 
         self.estado_var.set(mensaje)
+        if DEBUG_RENDIMIENTO:
+            print(f"[PERF] buscar_por_etiqueta - imagenes revisadas: {imagenes_revisadas}")
+            print(f"[PERF] buscar_por_etiqueta - resultados: {len(resultados)}")
+        _medir_tiempo("buscar_por_etiqueta total", inicio)
 
     def limpiar_busqueda(self):
+        inicio = perf_counter()
         self.limpiar_estado_busqueda()
         self.indice_actual = 0
 
@@ -447,13 +474,16 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             self.actualizar_informacion()
             self.estado_var.set("Seleccione una carpeta para comenzar.")
             self.actualizar_estado_botones()
+        _medir_tiempo("limpiar_busqueda", inicio)
 
     def mostrar_imagen(self):
+        inicio = perf_counter()
         lista_actual = self.obtener_lista_actual()
         if not lista_actual:
             self.limpiar_vista_imagen()
             self.actualizar_informacion()
             self.actualizar_estado_botones()
+            _medir_tiempo("mostrar_imagen total", inicio)
             return
 
         ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
@@ -470,10 +500,13 @@ class EtiquetadorCustomTkApp(ctk.CTk):
                 "Error al mostrar imagen",
                 f"No se pudo cargar la imagen:\n{error}",
             )
+            _medir_tiempo("mostrar_imagen total", inicio)
             return
 
         try:
+            inicio_etiquetas = perf_counter()
             etiquetas = leer_etiquetas(ruta_imagen)
+            _medir_tiempo("mostrar_imagen leer_etiquetas", inicio_etiquetas)
             self.escribir_texto_etiquetas(", ".join(etiquetas))
         except MetadataError as error:
             messagebox.showerror("Error de ExifTool", str(error))
@@ -481,20 +514,26 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             self.estado_var.set("No se pudieron leer las etiquetas.")
 
         self.title(f"{nombre_archivo} - {self.indice_actual + 1}/{len(lista_actual)}")
+        _medir_tiempo("mostrar_imagen total", inicio)
 
     def guardar_etiquetas(self):
+        inicio = perf_counter()
         lista_actual = self.obtener_lista_actual()
         if not lista_actual:
+            _medir_tiempo("guardar_etiquetas", inicio)
             return
 
         ruta_imagen = os.path.abspath(lista_actual[self.indice_actual])
         etiquetas = normalizar_etiquetas_desde_texto(self.obtener_texto_etiquetas())
 
         try:
+            inicio_lectura = perf_counter()
             etiquetas_existentes = leer_etiquetas(ruta_imagen)
+            _medir_tiempo("guardar_etiquetas leer_etiquetas", inicio_lectura)
         except MetadataError as error:
             self.estado_var.set("No se guardó. No se pudieron verificar las etiquetas existentes.")
             messagebox.showerror("Error de ExifTool", str(error))
+            _medir_tiempo("guardar_etiquetas", inicio)
             return
 
         eliminando_etiquetas = not etiquetas and bool(etiquetas_existentes)
@@ -509,16 +548,20 @@ class EtiquetadorCustomTkApp(ctk.CTk):
             )
             if not confirmar_borrado:
                 self.estado_var.set("Guardado cancelado. Las etiquetas existentes se conservaron.")
+                _medir_tiempo("guardar_etiquetas", inicio)
                 return
 
         if not etiquetas and not etiquetas_existentes:
             self.estado_var.set("No hay etiquetas para guardar.")
+            _medir_tiempo("guardar_etiquetas", inicio)
             return
 
         etiquetas_para_escribir = [""] if eliminando_etiquetas else etiquetas
 
         try:
+            inicio_escritura = perf_counter()
             escribir_etiquetas(ruta_imagen, etiquetas_para_escribir)
+            _medir_tiempo("guardar_etiquetas escribir_etiquetas", inicio_escritura)
             self.escribir_texto_etiquetas(", ".join(etiquetas))
             if self.busqueda_activa:
                 self.estado_var.set(
@@ -535,6 +578,8 @@ class EtiquetadorCustomTkApp(ctk.CTk):
         except MetadataError as error:
             self.estado_var.set("No se pudieron guardar las etiquetas.")
             messagebox.showerror("Error de ExifTool", str(error))
+        finally:
+            _medir_tiempo("guardar_etiquetas", inicio)
 
     def imagen_siguiente(self):
         lista_actual = self.obtener_lista_actual()

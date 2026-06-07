@@ -8,16 +8,16 @@ class MetadataError(RuntimeError):
     pass
 
 
-def _validar_exiftool():
+def validar_exiftool():
     if not path.isfile(EXIFTOOL_PATH):
         raise MetadataError(
-            "No se encontró exiftool.exe en la raíz del proyecto.\n"
+            "No se encontró exiftool.exe.\n"
             f"Ruta esperada: {EXIFTOOL_PATH}"
         )
 
 
 def _ejecutar_exiftool(argumentos, accion):
-    _validar_exiftool()
+    validar_exiftool()
 
     try:
         return subprocess.run(

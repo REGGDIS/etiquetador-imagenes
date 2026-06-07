@@ -1,7 +1,8 @@
+import os
 import subprocess
 from os import path
 
-from app.core.config import EXIFTOOL_PATH
+from app.core.config import BASE_DIR, EXIFTOOL_LIB_DIR, EXIFTOOL_PATH
 
 
 class MetadataError(RuntimeError):
@@ -14,6 +15,17 @@ def validar_exiftool():
             "No se encontró exiftool.exe.\n"
             f"Ruta esperada: {EXIFTOOL_PATH}"
         )
+    if not path.isdir(EXIFTOOL_LIB_DIR):
+        raise MetadataError(
+            "No se encontró la carpeta interna de librerías de ExifTool.\n"
+            f"Ruta esperada: {EXIFTOOL_LIB_DIR}"
+        )
+
+
+def _crear_entorno_exiftool():
+    env = os.environ.copy()
+    env["PERL5LIB"] = EXIFTOOL_LIB_DIR
+    return env
 
 
 def _ejecutar_exiftool(argumentos, accion):
@@ -25,7 +37,9 @@ def _ejecutar_exiftool(argumentos, accion):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=True
+            check=True,
+            env=_crear_entorno_exiftool(),
+            cwd=BASE_DIR,
         )
     except subprocess.CalledProcessError as error:
         detalle = (error.stderr or error.stdout or "").strip()

@@ -13,6 +13,7 @@ BASE_DIR = obtener_base_app()
 EXIFTOOL_EXECUTABLE = "exiftool.exe"
 EXIFTOOL_PATH = os.path.join(BASE_DIR, EXIFTOOL_EXECUTABLE)
 EXIFTOOL_FILES_DIR = os.path.join(BASE_DIR, "exiftool_files")
+EXIFTOOL_LIB_DIR = os.path.join(EXIFTOOL_FILES_DIR, "lib")
 SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
 IMAGE_PREVIEW_SIZE = (700, 500)
 CUSTOMTK_IMAGE_PREVIEW_SIZE = (1400, 1000)
